@@ -3,6 +3,8 @@
 use std::{ptr, unreachable};
 
 use libc::c_void;
+use wabt::wat2wasm;
+use wasmi::{ModuleInstance, ImportsBuilder, NopExternals, RuntimeValue};
 
 use remacs_macros::lisp_fn;
 
@@ -1332,6 +1334,28 @@ pub fn condition_case(args: LispCons) -> LispObject {
     let (var, consq) = args.into();
     let (bodyform, handlers) = consq.into();
     unsafe { internal_lisp_condition_case(var, bodyform, handlers) }
+}
+
+/// Invoke Web Assembly Text WAT.
+///
+/// usage: (wasm-invoke WAT)
+#[lisp_fn]
+pub fn wasm_invoke(wat: LispStringRef) -> EmacsInt {
+    let wasm_binary: Vec<u8> =
+        wat2wasm(wat.as_slice())
+        .unwrap_or_else(|_| error!("failed to parse wat"));
+
+    let module = wasmi::Module::from_buffer(&wasm_binary)
+        .unwrap_or_else(|_| error!("failed to load wasm"));
+
+    let instance = ModuleInstance::new(&module, &ImportsBuilder::default())
+        .unwrap_or_else(|_| error!("Failed to instantiate wasm module."))
+        .assert_no_start();
+
+    match instance.invoke_export("test", &[], &mut NopExternals) {
+        Ok(Some(RuntimeValue::I32(x))) => EmacsInt::from(x),
+        _ => error!("Failed to execute export")
+    }
 }
 
 include!(concat!(env!("OUT_DIR"), "/eval_exports.rs"));

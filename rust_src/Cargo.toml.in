@@ -29,6 +29,8 @@ md5 = "0.6"
 rand = "0.6.5"
 sha1 = "0.6"
 sha2 = "0.8"
+wabt = "0.7.1"
+wasmi = "0.4.3"
 
 # Only want this local crate as dependency on Mac OS X
 [target.'cfg(target_os = "macos")'.dependencies]
